@@ -99,10 +99,6 @@ namespace Alex.Entities
 				new[]
 				{
 					InputManager.RegisterListener(
-						AlexInputCommand.Jump, InputBindingTrigger.Discrete, CheckMovementPredicate, SetFlying),
-					InputManager.RegisterListener(
-						AlexInputCommand.MoveUp, InputBindingTrigger.Discrete, CheckMovementPredicate, SetFlying),
-					InputManager.RegisterListener(
 						AlexInputCommand.ToggleCamera, InputBindingTrigger.Tap, CheckMovementPredicate,
 						() => Player.Level.Camera.ToggleMode()),
 					InputManager.RegisterListener(
@@ -290,19 +286,6 @@ namespace Alex.Entities
 			return CheckMovementInput && CanOpenDialog();
 		}
 
-		private void SetFlying()
-		{
-			var now = DateTime.UtcNow;
-			var timeBetween = now.Subtract(_lastUp).TotalMilliseconds;
-
-			if (timeBetween <= 350)
-			{
-				Player.SetFlying(!Player.IsFlying);
-			}
-
-			_lastUp = now;
-		}
-
 		public bool CheckMovementInput { get; set; }
 
 		private bool _checkInput = true;
@@ -458,6 +441,7 @@ namespace Alex.Entities
 
 			bool swimming = Player.IsSwimming;
 			bool sprinting = Player.IsSprinting;
+			bool flying = Player.IsFlying;
 
 			if (!sprinting && (inputFlags & AuthInputFlags.Sprinting) != 0)
 			{
@@ -487,6 +471,17 @@ namespace Alex.Entities
 				sprinting = false;
 			}
 
+			if ((inputFlags & AuthInputFlags.StartFlying) != 0)
+			{
+				flying = true;
+				swimming = false;
+			}
+			else if ((inputFlags & AuthInputFlags.StopFlying) != 0)
+			{
+				flying = false;
+				swimming = false;
+			}
+
 			if (_jumping && Player.Velocity.Y <= 0.00001f && Player.FeetInWater)
 				_jumping = false;
 
@@ -495,7 +490,7 @@ namespace Alex.Entities
 				_canJump = true;
 			}
 
-			if (!Player.IsFlying && ((inputFlags & AuthInputFlags.JumpDown) != 0
+			if (!flying && ((inputFlags & AuthInputFlags.JumpDown) != 0
 			                         || (inputFlags & AuthInputFlags.WantUp) != 0))
 			{
 				if (Player.IsInWater && !_jumping)
@@ -561,6 +556,21 @@ namespace Alex.Entities
 				else
 				{
 					inputFlags |= AuthInputFlags.StopSprinting;
+				}
+			}
+
+			bool wasFlying = Player.IsFlying;
+			Player.SetFlying(flying && Player.CanFly);
+
+			if (Player.IsFlying != wasFlying)
+			{
+				if (Player.IsFlying)
+				{
+					inputFlags |= AuthInputFlags.StartFlying;
+				}
+				else
+				{
+					inputFlags |= AuthInputFlags.StopFlying;
 				}
 			}
 
@@ -651,6 +661,27 @@ namespace Alex.Entities
 				{
 					inputFlags |= AuthInputFlags.StartSneaking;
 				}
+			}
+
+
+			if (InputManager.IsBeginPress(AlexInputCommand.Jump) || InputManager.IsBeginPress(AlexInputCommand.MoveUp))
+			{
+				var now = DateTime.UtcNow;
+				var timeBetween = now.Subtract(_lastUp).TotalMilliseconds;
+
+				if (timeBetween <= 350)
+				{
+					if (Player.IsFlying)
+					{
+						inputFlags |= AuthInputFlags.StopFlying;
+					}
+					else
+					{
+						inputFlags |= AuthInputFlags.StartFlying;
+					}
+				}
+
+				_lastUp = now;
 			}
 
 			if ((inputFlags & AuthInputFlags.WalkForwards) != 0)

@@ -74,10 +74,10 @@ namespace Alex.Entities.Generic
 		/// <inheritdoc />
 		protected override bool HandleMetadata(MiNET.Entities.Entity.MetadataFlags flag, MetadataEntry entry)
 		{
-			if (flag == MiNET.Entities.Entity.MetadataFlags.PotionColor
-			    && entry is MiNET.Utils.Metadata.MetadataInt potionColor)
+			if (flag == MiNET.Entities.Entity.MetadataFlags.EffectColor
+			    && entry is MiNET.Utils.Metadata.MetadataInt effectColor)
 			{
-				Color = potionColor.Value;
+				Color = effectColor.Value;
 
 				return true;
 			}

@@ -151,13 +151,6 @@ namespace Alex.Entities
 		/// <inheritdoc />
 		public override void SetFlying(bool flying)
 		{
-			if (!CanFly && flying)
-			{
-				IsFlying = false;
-
-				return;
-			}
-			
 			if (flying && !IsFlying)
 			{
 				if (Network?.EntityAction((int)EntityId, EntityAction.StartFlying) == true)
@@ -750,7 +743,7 @@ namespace Alex.Entities
 				}
 			}
 
-			if (!slot.IsAir() && slot.Id > 0 && slot.Count > 0)
+			if (!slot.IsAir() && slot.Count > 0)
 			{
 				ItemUseAction action;
 
@@ -776,7 +769,7 @@ namespace Alex.Entities
 		{
 			var item = Inventory.MainHand;
 
-			if (item != null && item.Count > 0 && item.Id > 0)
+			if (item != null && item.Count > 0)
 			{
 				IsUsingItem = true;
 			}

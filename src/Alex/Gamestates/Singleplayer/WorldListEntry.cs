@@ -91,7 +91,7 @@ public class WorldInfo
 					GameType = levelInfo.GameType,
 					GeneratorVersion = levelInfo.Generator,
 					LastPlayed = levelInfo.LastPlayed,
-					RandomSeed = levelInfo.RandomSeed
+					Seed = levelInfo.RandomSeed
 				};
 
 				GameVersion = levelInfo.BaseGameVersion;

@@ -2,6 +2,7 @@ using Alex.Common.Input;
 using Alex.Common.Utils;
 using Alex.Interfaces;
 using Microsoft.Xna.Framework;
+using MiNET.Net;
 using RocketUI;
 using RocketUI.Input;
 using DialogBase = RocketUI.DialogBase;
@@ -51,6 +52,13 @@ namespace Alex.Gui.Forms
 
 			if (ReliableInputManager.Any(x => x.IsPressed(AlexInputCommand.Exit)))
 			{
+				var packet = McpeModalFormResponse.CreateObject();
+				packet.formId = FormId;
+				packet.cancelReason = (byte) McpeModalFormResponse.CancelReason.UserClosed;
+
+				//JsonConvert.SerializeObject(idx)
+				Parent.SendResponse(packet);
+				
 				Parent.Hide(FormId);
 			}
 		}

@@ -34,38 +34,39 @@ namespace Alex.Utils
 
 			//if (itemState != null)
 			//{
-			if (ItemFactory.TryGetItem(item.Name, out result))
+			if (ItemFactory.TryGetItem(item.Id, out result))
 			{
 				//	Log.Info($"{item.Id} = {JsonConvert.SerializeObject(itemState, SerializerSettings)} || {JsonConvert.SerializeObject(result, SerializerSettings)}");
 			}
-			else if (result == null && item.Id < 256 && item.Id >= 0) //Block
+			else if (result == null && item.LegacyId < 256 && item.LegacyId >= 0) //Block
 			{
-				var id = item.Id;
-				var meta = (byte)item.Metadata;
-
-				var reverseMap = MiNET.Worlds.AnvilWorldProvider.Convert.FirstOrDefault(map => map.Value.Item1 == id);
-
-				if (reverseMap.Value != null)
-				{
-					id = (byte)reverseMap.Key;
-				}
-
-				var res = BlockFactory.GetBlockStateID(id, meta);
-
-				if (AnvilWorldProvider.BlockStateMapper.TryGetValue(res, out var res2))
-				{
-					var t = BlockFactory.GetBlockState(res2);
-
-					ItemFactory.TryGetItem(t.Name, out result);
-				}
+				//var id = item.Id;
+				//var meta = (byte)item.Metadata;
+//
+				//var reverseMap = MiNET.Worlds.AnvilWorldProvider.Convert.FirstOrDefault(map => map.Value.Item1 == id);
+//
+				//if (reverseMap.Value != null)
+				//{
+				//	id = (byte)reverseMap.Key;
+				//}
+//
+				//var res = BlockFactory.GetBlockStateID(id, meta);
+//
+				//if (AnvilWorldProvider.BlockStateMapper.TryGetValue(res, out var res2))
+				//{
+				//	var t = BlockFactory.GetBlockState(res2);
+//
+				//	ItemFactory.TryGetItem(t.Name, out result);
+				//}
+				Log.Error($"Failed to convert MiNET item to Alex item. ({(item == null ? "" : $"Name={item.Id}, ")} CallingMethod={source}, MiNET={item})");
 			}
-			else if (ItemFactory.TryGetItem(item.Id, item.Metadata, out result)) { }
+			else if (ItemFactory.TryGetItem(item.LegacyId, item.Metadata, out result)) { }
 
 			if (result == null || (result.IsAir() && !(item is MiNET.Items.ItemAir)))
 			{
-				if (!ItemFactory.TryGetBedrockItem(item.Name, item.Metadata, out result))
+				if (!ItemFactory.TryGetBedrockItem(item.Id, item.Metadata, out result))
 					Log.Warn(
-						$"Failed to convert MiNET item to Alex item. ({(item == null ? "" : $"Name={item.Name}, ")} CallingMethod={source}, MiNET={item})");
+						$"Failed to convert MiNET item to Alex item. ({(item == null ? "" : $"Name={item.Id}, ")} CallingMethod={source}, MiNET={item})");
 			}
 
 			if (result == null)
@@ -77,7 +78,7 @@ namespace Alex.Utils
 			result.Meta = item.Metadata;
 			result.Count = item.Count;
 			result.Nbt = item.ExtraData;
-			result.Id = item.Id;
+			result.Id = item.LegacyId;
 
 			return result;
 		}

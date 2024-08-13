@@ -42,7 +42,7 @@ namespace Alex.Entities
 		public int Latency { get; set; } = 0;
 
 		public BlockCoordinates BedPosition { get; set; } = BlockCoordinates.Zero;
-		public Color PotionColor { get; set; } = Color.White;
+		public Color EffectColor { get; set; } = Color.White;
 
 		public ActionPermissions ActionPermissions { get; set; }
 		public CommandPermission CommandPermissions { get; set; }
@@ -545,14 +545,14 @@ namespace Alex.Entities
 				return true;
 			}
 
-			if (flag == MiNET.Entities.Entity.MetadataFlags.PotionColor && entry is MetadataInt potionColor)
+			if (flag == MiNET.Entities.Entity.MetadataFlags.EffectColor && entry is MetadataInt potionColor)
 			{
 				//int a = 255;
 				//int r = 255;
 				//int g = 255;
 				//int b = 255;
 
-				PotionColor = new Color((uint)potionColor.Value);
+				EffectColor = new Color((uint)potionColor.Value);
 
 				//PotionColor = 
 				return true;

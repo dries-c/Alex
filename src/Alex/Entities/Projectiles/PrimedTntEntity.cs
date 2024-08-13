@@ -79,7 +79,7 @@ namespace Alex.Entities.Projectiles
 		/// <inheritdoc />
 		protected override bool HandleMetadata(MiNET.Entities.Entity.MetadataFlags flag, MetadataEntry entry)
 		{
-			if (flag == MiNET.Entities.Entity.MetadataFlags.DataFuseLength && entry is MetadataInt fuseData)
+			if (flag == MiNET.Entities.Entity.MetadataFlags.FuseTime && entry is MetadataInt fuseData)
 			{
 				Fuse = fuseData.Value;
 

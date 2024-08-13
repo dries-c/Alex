@@ -9,7 +9,7 @@ namespace Alex.Net.Bedrock.Packets
 	{
 		private static readonly Logger Log = LogManager.GetCurrentClassLogger(typeof(AlexPacketFactory));
 
-		public Packet Create(byte messageId, ReadOnlyMemory<byte> buffer, string ns)
+		public Packet Create(int messageId, ReadOnlyMemory<byte> buffer, string ns)
 		{
 			if (ns == "raknet")
 				return CreateRakNet(messageId, buffer);
@@ -18,7 +18,7 @@ namespace Alex.Net.Bedrock.Packets
 		}
 
 
-		private Packet CreateRakNet(byte messageId, ReadOnlyMemory<byte> buffer)
+		private Packet CreateRakNet(int messageId, ReadOnlyMemory<byte> buffer)
 		{
 			Packet packet = null;
 
@@ -46,7 +46,7 @@ namespace Alex.Net.Bedrock.Packets
 			return packet;
 		}
 
-		private Packet CreatePe(byte messageId, ReadOnlyMemory<byte> buffer)
+		private Packet CreatePe(int messageId, ReadOnlyMemory<byte> buffer)
 		{
 			Packet packet = null;
 

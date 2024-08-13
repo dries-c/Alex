@@ -55,7 +55,6 @@ namespace Alex.Net.Bedrock
 		{
 			var sendList = new List<Packet>();
 			var sendInBatch = new List<Packet>();
-
 			foreach (Packet packet in packetsToSend)
 			{
 				// We must send forced clear messages in single message batch because
@@ -67,11 +66,10 @@ namespace Alex.Net.Bedrock
 					var wrapper = McpeWrapper.CreateObject();
 					wrapper.ReliabilityHeader.Reliability = Reliability.ReliableOrdered;
 					wrapper.ForceClear = true;
-					wrapper.payload = Compress(new List<Packet>() { packet });
-					//wrapper.Encode(); // prepare
+					wrapper.payload = _session.CompressionManager.CompressPacketsForWrapper(new List<Packet> {packet});
+					wrapper.Encode(); // prepare
 					packet.PutPool();
 					sendList.Add(wrapper);
-
 					continue;
 				}
 
@@ -79,18 +77,13 @@ namespace Alex.Net.Bedrock
 				{
 					packet.ReliabilityHeader.Reliability = Reliability.ReliableOrdered;
 					sendList.Add(packet);
-
 					continue;
 				}
 
 				if (!packet.IsMcpe)
 				{
-					packet.ReliabilityHeader.Reliability =
-						packet.ReliabilityHeader.Reliability != Reliability.Undefined ?
-							packet.ReliabilityHeader.Reliability : Reliability.Reliable;
-
+					packet.ReliabilityHeader.Reliability = packet.ReliabilityHeader.Reliability != Reliability.Undefined ? packet.ReliabilityHeader.Reliability : Reliability.Reliable;
 					sendList.Add(packet);
-
 					continue;
 				}
 
@@ -103,17 +96,8 @@ namespace Alex.Net.Bedrock
 			{
 				var batch = McpeWrapper.CreateObject();
 				batch.ReliabilityHeader.Reliability = Reliability.ReliableOrdered;
-
-				if (CryptoContext != null && CryptoContext.UseEncryption)
-				{
-					batch.payload = CryptoUtils.Encrypt(Compress(sendInBatch), CryptoContext);
-				}
-				else
-				{
-					batch.payload = Compress(sendInBatch);
-				}
-
-				//batch.Encode(); // prepare
+				batch.payload = _session.CompressionManager.CompressPacketsForWrapper(sendInBatch);
+				batch.Encode(); // prepare
 				sendList.Add(batch);
 			}
 
@@ -122,42 +106,7 @@ namespace Alex.Net.Bedrock
 
 		public static RecyclableMemoryStreamManager MemoryStreamManager { get; set; } =
 			new RecyclableMemoryStreamManager();
-
-		private byte[] Compress(ICollection<Packet> packets)
-		{
-			//  long length = 0;
-			//   foreach (Packet packet in packets) length += packet.Encode().Length;
-
-			// var compressionLevel = _session.CompressionThreshold > -1 && length >= _session.CompressionThreshold ?
-			//   System.IO.Compression.CompressionLevel.Fastest : System.IO.Compression.CompressionLevel.NoCompression;
-
-			using (MemoryStream stream = MemoryStreamManager.GetStream())
-			{
-				using (var compressStream = new DeflateStream(stream, CompressionLevel.Fastest, true))
-				{
-					foreach (Packet packet in packets)
-					{
-						byte[] bs = packet.Encode();
-
-						if (bs != null && bs.Length > 0)
-						{
-							VarInt.WriteUInt32(compressStream, (uint)bs.Length);
-							//BatchUtils.WriteLength(compressStream, bs.Length);
-							compressStream.Write(bs, 0, bs.Length);
-						}
-
-						packet.PutPool();
-					}
-
-					compressStream.Flush();
-				}
-
-				byte[] bytes = stream.ToArray();
-
-				return bytes;
-			}
-		}
-
+		
 		public Packet HandleOrderedSend(Packet packet)
 		{
 			if (!packet.ForceClear && CryptoContext != null && CryptoContext.UseEncryption
@@ -183,109 +132,80 @@ namespace Alex.Net.Bedrock
 			
 			try
 			{
+				if (message == null) throw new NullReferenceException();
+	
 				if (message is McpeWrapper wrapper)
 				{
-					var payload = wrapper.payload;
-
-					//lock (_handlingLock)
+					// Get bytes to process
+					ReadOnlyMemory<byte> payload = wrapper.payload;
+	
+					// Decrypt bytes
+	
+					if (CryptoContext != null && CryptoContext.UseEncryption)
 					{
-						PacketHandlingSemaphore.Wait();
+						// This call copies the entire buffer, but what can we do? It is kind of compensated by not
+						// creating a new buffer when parsing the packet (only a mem-slice)
+						payload = CryptoUtils.Decrypt(payload, CryptoContext);
+					}
+	
+					// Decompress bytes
+	
+					//var stream = new MemoryStreamReader(payload.Slice(0, payload.Length - 4)); // slice away adler
+					//if (stream.ReadByte() != 0x78)
+					//{
+					//	if (Log.IsDebugEnabled) Log.Error($"Incorrect ZLib header. Expected 0x78 0x9C 0x{wrapper.Id:X2}\n{Packet.HexDump(wrapper.payload)}");
+					//	if (Log.IsDebugEnabled) Log.Error($"Incorrect ZLib header. Decrypted 0x{wrapper.Id:X2}\n{Packet.HexDump(payload)}");
+					//	throw new InvalidDataException("Incorrect ZLib header. Expected 0x78 0x9C");
+					//}
+					//stream.ReadByte();
+	
+					IEnumerable<Packet> messages;
+					try
+					{
+						messages = (_session?.CompressionManager ?? CompressionManager.NoneCompressionManager).Decompress(payload);
+					}
+					catch (Exception e)
+					{
+						if (Log.IsDebugEnabled) Log.Warn($"Error parsing bedrock message \n{Packet.HexDump(payload)}", e);
+						throw;
+					}
+	
+					foreach (Packet msg in messages)
+					{
+						// Temp fix for performance, take 1.
+						//var interact = msg as McpeInteract;
+						//if (interact?.actionId == 4 && interact.targetRuntimeEntityId == 0) continue;
+	
+						msg.ReliabilityHeader = new ReliabilityHeader()
+						{
+							Reliability = wrapper.ReliabilityHeader.Reliability,
+							ReliableMessageNumber = wrapper.ReliabilityHeader.ReliableMessageNumber,
+							OrderingChannel = wrapper.ReliabilityHeader.OrderingChannel,
+							OrderingIndex = wrapper.ReliabilityHeader.OrderingIndex,
+						};
+	
+						//RakOfflineHandler.TraceReceive(Log, msg);
 						try
 						{
-							// Decrypt byteswrapper
-							if (CryptoContext != null && CryptoContext.UseEncryption)
-							{
-								payload = CryptoUtils.Decrypt(payload, CryptoContext);
-							}
-
-							using (var compressionStream = new DeflateStream(
-								       new MemoryStreamReader(payload),
-								       System.IO.Compression.CompressionMode.Decompress,
-								       false))
-							{
-								payload = compressionStream.ReadToReadOnlyMemory();
-							}
+							HandleGamePacket(msg);
 						}
-						finally
+						catch (Exception e)
 						{
-							PacketHandlingSemaphore.Release();
+							Log.Warn($"Bedrock message handler error", e);
 						}
 					}
-
-					//var messages = new List<Packet>();
-
-					// Get bytes to process
-					//	var payload = wrapper.payload;
-
-					using (var ms = new MemoryStreamReader(payload))
-					{
-						ms.Position = 0;
-
-						int count = 0;
-
-						// Get actual packet out of bytes
-						while (ms.Position < ms.Length)
-						{
-							if (_session.Evicted)
-								return;
-
-							uint len = VarInt.ReadUInt32(ms);
-							long pos = ms.Position;
-
-							var data = ms.Read(len);
-
-							ms.Position = pos;
-							int id = VarInt.ReadInt32(ms);
-
-							Packet packet = null;
-
-							try
-							{
-								packet = PacketFactory.Create((byte) id, data, "mcpe") ??
-								         new UnknownPacket((byte) id, data);
-
-								packet.ReliabilityHeader = wrapper.ReliabilityHeader;
-
-								//messages.Add(packet);
-								count++;
-							}
-							catch (Exception e)
-							{
-								Log.Warn(
-									e,
-									$"Error parsing bedrock message #{count} id={id} (Buffer size={data.Length} Packet size={len})");
-							}
-
-
-							if (packet != null)
-							{
-								try
-								{
-									HandleGamePacket(packet);
-								}
-								catch (Exception e)
-								{
-									Log.Warn(e, $"Error handling game packet #{count} id={id}");
-								}
-								finally
-								{
-									packet.PutPool();
-								}
-							}
-
-							ms.Position = pos + len;
-						}
-					}
+	
+					wrapper.PutPool();
 				}
 				else if (message is UnknownPacket unknownPacket)
 				{
-					Log.Warn(
-						$"Received unknown packet 0x{unknownPacket.Id:X2}\n{Packet.HexDump(unknownPacket.Message)}");
+					Log.Warn($"Received unknown packet 0x{unknownPacket.Id:X2}\n{Packet.HexDump(unknownPacket.Message)}");
+	
+					unknownPacket.PutPool();
 				}
 				else
 				{
-					Log.Error(
-						$"Unhandled packet: {message.GetType().Name} 0x{message.Id:X2}, IP {_session.EndPoint.Address}");
+					Log.Error($"Unhandled packet: {message.GetType().Name} 0x{message.Id:X2}, IP {_session.EndPoint.Address}");
 				}
 			}
 			finally
@@ -305,7 +225,7 @@ namespace Alex.Net.Bedrock
 
 			try
 			{
-				//     Log.Info($"Got packet: {message}");
+				     Log.Info($"Got packet: {message}");
 				if (!_messageDispatcher.HandlePacket(message))
 				{
 					if (!PacketHandler.HandleOtherPackets(message))

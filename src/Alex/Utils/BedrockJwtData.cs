@@ -15,6 +15,9 @@ namespace Alex.Utils
 
 
 		public int ClientRandomId { get; set; }
+		public bool TrustedSkin  { get; set; }
+		public bool CompatibleWithClientSideChunkGen { get; set; }
+		public bool OverrideSkin { get; set; }
 		public string ServerAddress { get; set; }
 		public string LanguageCode { get; set; }
 

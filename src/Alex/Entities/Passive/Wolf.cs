@@ -47,7 +47,7 @@ namespace Alex.Entities.Passive
 		/// <inheritdoc />
 		protected override bool HandleMetadata(MiNET.Entities.Entity.MetadataFlags flag, MetadataEntry entry)
 		{
-			if (flag == MiNET.Entities.Entity.MetadataFlags.Color && entry is MiNET.Utils.Metadata.MetadataByte color)
+			if (flag == MiNET.Entities.Entity.MetadataFlags.ColorIndex && entry is MiNET.Utils.Metadata.MetadataByte color)
 			{
 				CollarColor = color.Value;
 

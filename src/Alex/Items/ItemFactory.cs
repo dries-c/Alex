@@ -419,7 +419,7 @@ namespace Alex.Items
 					SetItemMaterial(item, minetItem.ItemMaterial);
 
 					item.Meta = minetItem.Metadata;
-					item.Id = minetItem.Id;
+					item.Id = minetItem.LegacyId;
 				}
 
 				item.Name = entry.Key;

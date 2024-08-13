@@ -64,19 +64,19 @@ public class BlockPaletteEncoding : IPaletteEncoding
 		file.LoadFromStream(stream, NbtCompression.None);
 		var tag = (NbtCompound)file.RootTag;
 
-		var block = MiNET.Blocks.BlockFactory.GetBlockByName(tag["name"].StringValue);
+		var block = MiNET.Blocks.BlockFactory.GetBlockById(tag["name"].StringValue);
 
 		if (block != null && block.GetType() != typeof(Block) && !(block is Air))
 		{
 			List<IBlockState> blockState = ReadBlockState(tag);
-			block.SetState(blockState);
+			block.SetStates(blockState);
 		}
 		else
 		{
 			block = new MiNET.Blocks.Air();
 		}
 
-		return (uint) block.GetRuntimeId();
+		return (uint) block.RuntimeId;
 	}
 	
 	private static List<IBlockState> ReadBlockState(NbtCompound tag)

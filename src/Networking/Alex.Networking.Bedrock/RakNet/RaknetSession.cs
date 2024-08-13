@@ -95,7 +95,7 @@ namespace Alex.Networking.Bedrock.RakNet
 		public ConcurrentDictionary<int, Datagram> WaitingForAckQueue { get; } =
 			new ConcurrentDictionary<int, Datagram>();
 
-		public int CompressionThreshold { get; set; } = -1;
+		public CompressionManager CompressionManager { get; } = new CompressionManager();
 		private HighPrecisionTimer _tickerHighPrecisionTimer;
 
 		public RaknetSession(Interfaces.Net.ConnectionInfo connectionInfo,
@@ -668,39 +668,7 @@ namespace Alex.Networking.Bedrock.RakNet
 
 				if (sendList.Count == 0) return;
 
-				List<Packet> prepareSend = CustomMessageHandler.PrepareSend(sendList);
-				Packet[] packets = new Packet[prepareSend.Count];
-
-				for (var index = 0; index < prepareSend.Count; index++)
-				{
-					var packet = prepareSend[index];
-					var message = packet;
-
-					Reliability reliability = message.ReliabilityHeader.Reliability;
-
-					if (reliability == Reliability.Undefined)
-						reliability = Reliability.Reliable; // Questionable practice
-
-					if (reliability == Reliability.ReliableOrdered
-					    || reliability == Reliability.ReliableOrderedWithAckReceipt)
-						message.ReliabilityHeader.OrderingIndex = Interlocked.Increment(ref OrderingIndex);
-
-					packets[index] = message;
-				}
-
-				var sentData = 0;
-
-				foreach (Datagram datagram in Datagram.CreateDatagrams(MtuSize, this, packets))
-				{
-					var data = _connection.SendDatagram(this, datagram);
-					sentData += data;
-					Interlocked.Add(ref UnackedBytes, data);
-				}
-
-				foreach (var packet in packets)
-					packet?.PutPool();
-
-				_bandwidthExceededStatistic = _sendQueue.Count > 0;
+				SendPrepareDirectPackets(sendList);
 			}
 			catch (Exception e)
 			{
@@ -728,6 +696,48 @@ namespace Alex.Networking.Bedrock.RakNet
 			}
 		}
 
+		public void SendPrepareDirectPacket(Packet packet)
+		{
+			SendPrepareDirectPackets(new List<Packet> {packet});
+		}
+
+		private void SendPrepareDirectPackets(List<Packet> sendList)
+		{
+			List<Packet> prepareSend = CustomMessageHandler.PrepareSend(sendList);
+			Packet[] packets = new Packet[prepareSend.Count];
+
+			for (var index = 0; index < prepareSend.Count; index++)
+			{
+				var packet = prepareSend[index];
+				var message = packet;
+
+				Reliability reliability = message.ReliabilityHeader.Reliability;
+
+				if (reliability == Reliability.Undefined)
+					reliability = Reliability.Reliable; // Questionable practice
+
+				if (reliability == Reliability.ReliableOrdered
+				    || reliability == Reliability.ReliableOrderedWithAckReceipt)
+					message.ReliabilityHeader.OrderingIndex = Interlocked.Increment(ref OrderingIndex);
+
+				packets[index] = message;
+			}
+
+			var sentData = 0;
+
+			foreach (Datagram datagram in Datagram.CreateDatagrams(MtuSize, this, packets))
+			{
+				var data = _connection.SendDatagram(this, datagram);
+				sentData += data;
+				Interlocked.Add(ref UnackedBytes, data);
+			}
+
+			foreach (var packet in packets)
+				packet?.PutPool();
+
+			_bandwidthExceededStatistic = _sendQueue.Count > 0;
+		}
+
 		public IPEndPoint GetClientEndPoint()
 		{
 			return EndPoint;
@@ -740,7 +750,7 @@ namespace Alex.Networking.Bedrock.RakNet
 
 		private bool _closed = false;
 
-		public void Close()
+		public void Close(bool sendDisconnect = true)
 		{
 			if (_closed)
 				return;
@@ -758,9 +768,13 @@ namespace Alex.Networking.Bedrock.RakNet
 
 			CustomMessageHandler = null;
 
-			SendDirectPacket(DisconnectionNotification.CreateObject());
-
 			SendQueue(500);
+			
+			if (sendDisconnect)
+			{
+				// Send with high priority, bypass queue
+				SendDirectPacket(DisconnectionNotification.CreateObject());
+			}
 
 			_cancellationToken.Cancel();
 			_orderingBufferQueue.Clear();

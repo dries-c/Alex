@@ -36,14 +36,17 @@ using Jose;
 using MiNET;
 using MiNET.Net;
 using MiNET.Particles;
+using MiNET.Plugins;
 using MiNET.UI;
 using MiNET.Utils;
+using MiNET.Utils.IO;
 using MiNET.Worlds;
 using Newtonsoft.Json;
 using NLog;
 using AnvilWorldProvider = Alex.Worlds.Singleplayer.AnvilWorldProvider;
 using BlockCoordinates = Alex.Common.Utils.Vectors.BlockCoordinates;
 using Color = Microsoft.Xna.Framework.Color;
+using Command = Alex.Utils.Commands.Command;
 using CommandProperty = Alex.Utils.Commands.CommandProperty;
 using Dimension = Alex.Worlds.Dimension;
 using Entity = Alex.Entities.Entity;
@@ -242,6 +245,11 @@ namespace Alex.Net.Bedrock
 			}
 
 			WorldProvider?.ChatRecipient?.AddMessage(rawMessage, (MessageType)message.type);
+		}
+
+		public void HandleMcpeServerPlayerPostMovePosition(McpeServerPlayerPostMovePosition message)
+		{
+			UnhandledPackage(message);
 		}
 
 		public void HandleMcpeSetTime(McpeSetTime message)
@@ -458,10 +466,10 @@ namespace Alex.Net.Bedrock
 				foreach (var r in addRecords)
 				{
 					if (_playerListPlayers.TryAdd(
-						    r.ClientUuid, new PlayerListData(r.ClientUuid, r.Skin, r.DisplayName)))
+						    r.ClientUuid, new PlayerListData(r.ClientUuid, r.Skin, r.Username)))
 					{
 						Client.World.AddPlayerListItem(
-							new PlayerListItem(r.ClientUuid, r.DisplayName, (GameMode)((int)r.GameMode), -1));
+							new PlayerListItem(r.ClientUuid, r.Username, GameMode.Survival, -1));
 					}
 				}
 			}
@@ -690,12 +698,6 @@ namespace Alex.Net.Bedrock
 			UnhandledPackage(message);
 		}
 
-		public void HandleMcpeTickSync(McpeTickSync message)
-		{
-			Log.Info($"Received TickSync! RequestTime={message.requestTime} ResponseTime={message.responseTime} Delay={(message.responseTime - message.requestTime)}");
-			UnhandledPackage(message);
-		}
-
 		public void HandleMcpeSpawnParticleEffect(McpeSpawnParticleEffect message)
 		{
 			if (!AlexInstance.ParticleManager.SpawnParticle(
@@ -739,11 +741,13 @@ namespace Alex.Net.Bedrock
 
 		public void HandleMcpeNetworkSettings(McpeNetworkSettings message)
 		{
-			var threshold = BitConverter.ToInt16(new byte[] { message.unknown, message.compressionThreshold });
-
-			Client.Connection.Session.CompressionThreshold = threshold;
-
-			Log.Info($"Compression Threshold: {threshold}");
+			Client.Connection.Session.CompressionManager.CompressionThreshold = message.compressionThreshold;
+			Client.Connection.Session.CompressionManager.CompressionAlgorithm = (CompressionAlgorithm) message.compressionAlgorithm;
+			Log.Info($"Compression messages: " +
+			         $"{Client.Connection.Session.CompressionManager.CompressionAlgorithm} " +
+			         $"Threshold: {Client.Connection.Session.CompressionManager.CompressionThreshold}" +
+			         $"Message: {message}");
+			Client.SendAlexLogin();
 		}
 
 		/// <inheritdoc />
@@ -776,12 +780,6 @@ namespace Alex.Net.Bedrock
 		}
 
 		/// <inheritdoc />
-		public void HandleMcpeFilterTextPacket(McpeFilterTextPacket message)
-		{
-			UnhandledPackage(message);
-		}
-
-		/// <inheritdoc />
 		public void HandleMcpeUpdateSubChunkBlocksPacket(McpeUpdateSubChunkBlocksPacket message)
 		{
 			UnhandledPackage(message);
@@ -798,7 +796,8 @@ namespace Alex.Net.Bedrock
 		{
 			var userId = BinaryPrimitives.ReverseEndianness(message.entityUniqueId);
 			var player = Client.World.Player;
-			if (message.entityUniqueId == 0 || message.entityUniqueId == player.EntityId || userId == player.EntityId)
+			ulong playerEntityId = (ulong) player.EntityId;
+			if (message.entityUniqueId == 0 || message.entityUniqueId == (ulong) player.EntityId || userId == (ulong) player.EntityId)
 			{
 				HandleAbilityLayers(player, message.layers);
 			}
@@ -820,6 +819,44 @@ namespace Alex.Net.Bedrock
 			var player = Client.World.Player;
 			player.IsNoPvM = message.noPvm;
 			player.IsWorldImmutable = message.immutableWorld;
+		}
+
+		/// <inheritdoc />
+		public void HandleMcpeTrimData(McpeTrimData message)
+		{
+			UnhandledPackage(message);
+		}
+
+		/// <inheritdoc />
+		public void HandleMcpeOpenSign(McpeOpenSign message)
+		{
+			UnhandledPackage(message);
+		}
+
+		/// <inheritdoc />
+		public void HandleMcpePlayerToggleCrafterSlotRequest(McpePlayerToggleCrafterSlotRequest message)
+		{
+			UnhandledPackage(message);
+		}
+
+		public void HandleMcpeSetPlayerInventoryOptions(McpeSetPlayerInventoryOptions message)
+		{
+			UnhandledPackage(message);
+		}
+
+		public void HandleMcpeSetHud(McpeSetHud message)
+		{
+			UnhandledPackage(message);
+		}
+
+		public void HandleMcpeAwardAchievement(McpeAwardAchievement message)
+		{
+			UnhandledPackage(message);
+		}
+
+		public void HandleMcpeCloseForm(McpeCloseForm message)
+		{
+			Client.WorldProvider.FormManager.CloseAll();
 		}
 
 		/// <inheritdoc />
@@ -1364,6 +1401,7 @@ namespace Alex.Net.Bedrock
 				{
 					var packet = McpeContainerClose.CreateObject();
 					packet.windowId = windowId;
+					packet.windowType = message.type;
 					Client.SendPacket(packet);
 				};
 			}
@@ -1596,11 +1634,6 @@ namespace Alex.Net.Bedrock
 		}
 
 		public void HandleMcpeCraftingData(McpeCraftingData message)
-		{
-			UnhandledPackage(message);
-		}
-
-		public void HandleMcpeCraftingEvent(McpeCraftingEvent message)
 		{
 			UnhandledPackage(message);
 		}
@@ -1840,19 +1873,8 @@ namespace Alex.Net.Bedrock
 				$"Received chunkradius. Requested={AlexInstance.Options.AlexOptions.VideoOptions.RenderDistance.Value} Received={message.chunkRadius}");
 
 			Client.World.ChunkManager.RenderDistance = message.chunkRadius;
-
-			if (Client.PlayerStatus != McpePlayStatus.PlayStatus.PlayerSpawn)
-			{
-				Client.SendTickSync();
-			}
-			//	Client.ChunkRadius = message.chunkRadius;
 		}
-
-		public void HandleMcpeItemFrameDropItem(McpeItemFrameDropItem message)
-		{
-			UnhandledPackage(message);
-		}
-
+		
 		public void HandleMcpeGameRulesChanged(McpeGameRulesChanged message)
 		{
 			var lvl = Client.World;
@@ -1975,7 +1997,7 @@ namespace Alex.Net.Bedrock
 
 							foreach (var param in overload.Value.Input.Parameters)
 							{
-								if (param.Type == "stringenum")
+								if (param.Type == CommandParameterType.Enum)
 								{
 									string enumName = param.EnumType;
 									string[] options = null;
@@ -1994,23 +2016,23 @@ namespace Alex.Net.Bedrock
 									c.Properties.Add(
 										new EnumCommandProperty(param.Name, !param.Optional, options, enumName));
 								}
-								else if (param.Type == "target")
+								else if (param.Type == CommandParameterType.Target)
 								{
 									c.Properties.Add(new TargetCommandProperty(param.Name, !param.Optional));
 								}
-								else if (param.Type == "rawtext")
+								else if (param.Type == CommandParameterType.Rawtext)
 								{
 									c.Properties.Add(new TextCommandProperty(param.Name, !param.Optional));
 								}
-								else if (param.Type == "int")
+								else if (param.Type == CommandParameterType.Int)
 								{
 									c.Properties.Add(new IntCommandProperty(param.Name, !param.Optional));
 								}
-								else if (param.Type == "float")
+								else if (param.Type == CommandParameterType.Float)
 								{
 									c.Properties.Add(new FloatCommandProperty(param.Name, !param.Optional));
 								}
-								else if (param.Type == "string")
+								else if (param.Type == CommandParameterType.String)
 								{
 									c.Properties.Add(new TextCommandProperty(param.Name, !param.Optional));
 								}
@@ -2220,7 +2242,7 @@ namespace Alex.Net.Bedrock
 
 		public void HandleMcpePlaySound(McpePlaySound message)
 		{
-			var coords = message.coordinates;
+			var coords = message.position;
 
 			if (!AlexInstance.AudioEngine.PlaySound(
 				    message.name, new Microsoft.Xna.Framework.Vector3(coords.X, coords.Y, coords.Z), message.pitch,

@@ -6,6 +6,7 @@ using Alex.Gui.Elements.Inventory;
 using Alex.Items;
 using Alex.Utils.Inventories;
 using Microsoft.Xna.Framework;
+using MiNET.Utils;
 using NLog;
 using RocketUI;
 
@@ -70,7 +71,7 @@ namespace Alex.Gui.Dialogs.Containers
 				slot.Item = Inventory[slot.InventoryIndex];
 			}
 
-			foreach (var slot in AddSlots(8, 8, 1, 4, 0, 120))
+			foreach (var slot in AddSlots(8, 8, 1, 4, 0, 120)) //todo: figure out why this is a thing
 			{
 				var inventoryIndex = slot.InventoryIndex;
 				Item item = new ItemAir();
@@ -109,13 +110,13 @@ namespace Alex.Gui.Dialogs.Containers
 
 			var playerInventory = player.Inventory;
 
-			foreach (var slot in AddSlots(98, 18, 2, 4, 1, 13))
+			foreach (var slot in AddSlots(98, 18, 2, 4, 1, (int) ContainerId.CraftingInput))
 			{
 				slot.Item = playerInventory.GetCraftingSlot(slot.InventoryIndex); // Inventory[slot.InventoryIndex];
 				//  slot.HighlightedBackground = new Microsoft.Xna.Framework.Color(Color.Purple, 0.5f);
 			}
 
-			CraftingOutput = AddSlot(154, 28, 0, 13);
+			CraftingOutput = AddSlot(154, 28, 0, (int) ContainerId.CraftingInput);
 			//  CraftingOutput.HighlightedBackground = new Microsoft.Xna.Framework.Color(Color.Purple, 0.5f);
 
 			/*var shieldSlot = new InventoryContainerItem()

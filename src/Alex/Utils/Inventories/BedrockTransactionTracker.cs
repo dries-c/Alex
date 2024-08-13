@@ -108,11 +108,11 @@ namespace Alex.Utils.Inventories
 						{
 							Source = new StackRequestSlotInfo()
 							{
-								Slot = slotId, ContainerId = inventoryId, StackNetworkId = clickedItem.StackID
+								Slot = slotId, ContainerId = (ContainerId) inventoryId, StackNetworkId = clickedItem.StackID
 							},
 							Destination = new StackRequestSlotInfo()
 							{
-								ContainerId = 58, //Cursor
+								ContainerId = ContainerId.Cursor,
 								Slot = 0,
 								StackNetworkId = previousCursorItem?.StackID ?? 0
 							}
@@ -122,7 +122,7 @@ namespace Alex.Utils.Inventories
 				}
 				else
 				{
-					var newInventoryId = (byte)(inventoryId == 28 ? 0 : inventoryId);
+					var newInventoryId = (byte)(inventoryId == (int)ContainerId.Inventory ? 0 : inventoryId);
 
 					//if (newInventoryId == 0 && slotId >= 36 && slotId <= 39)
 					//{
@@ -229,33 +229,33 @@ namespace Alex.Utils.Inventories
 
 			switch (containerId)
 			{
-				case 13: // crafting
+				case (byte) ContainerId.CraftingInput: // crafting
 					item = Client.World.Player.Inventory.GetCraftingSlot(slot);
 
 					break;
 
-				case 21: // enchanting
-				case 22: // enchanting
-				case 41: // loom
-				case 58: // cursor
-				case 59: // creative
+				case (byte) ContainerId.EnchantingInput:
+				case (byte) ContainerId.EnchantingMaterial:
+				case (byte) ContainerId.LoomInput:
+				case (byte) ContainerId.Cursor:
+				case (byte) ContainerId.CreatedOutput:
 					item = Client.World.Player.Inventory.UiInventory[slot];
 
 					break;
 
-				case 12: // auto
-				case 27: // hotbar
-				case 28: // player inventory
+				case (byte) ContainerId.CombinedHotbarAndInventory:
+				case (byte) ContainerId.Hotbar:
+				case (byte) ContainerId.Inventory:
 					item = Client.World.Player.Inventory[slot];
 
 					break;
 
-				case 33: // off-hand
+				case (byte) ContainerId.Offhand:
 					item = Client.World.Player.Inventory.OffHand; // _player.Inventory.OffHand;
 
 					break;
 
-				case 6: // armor
+				case (byte) ContainerId.Armor:
 					item = slot switch
 					{
 						0 => Client.World.Player.Inventory.Helmet,
@@ -267,7 +267,7 @@ namespace Alex.Utils.Inventories
 
 					break;
 
-				case 7: // chest/container
+				case (byte) ContainerId.LevelEntity:
 					var activeWindow = Client.World.InventoryManager.ActiveWindow;
 
 					if (activeWindow != null)
@@ -300,35 +300,35 @@ namespace Alex.Utils.Inventories
 
 			switch (containerId)
 			{
-				case 13: // crafting
+				case (byte) ContainerId.CraftingInput:
 					Client.World.Player.Inventory.SetCraftingSlot(slot, item, false);
 
 					break;
 
-				case 21: // enchanting
-				case 22: // enchanting
-				case 41: // loom
-				case 58: // cursor
-				case 59: // creative
+				case (byte) ContainerId.EnchantingInput:
+				case (byte) ContainerId.EnchantingMaterial:
+				case (byte) ContainerId.LoomInput:
+				case (byte) ContainerId.Cursor:
+				case (byte) ContainerId.CreatedOutput:
 					Client.World.Player.Inventory.UiInventory.SetSlot(slot, item, false);
 
 					//Client.World.Player.Inventory.UiInventory[slot] = item;
 					break;
 
-				case 12: // auto
-				case 27: // hotbar
-				case 28: // player inventory
+				case (byte) ContainerId.CombinedHotbarAndInventory:
+				case (byte) ContainerId.Hotbar:
+				case (byte) ContainerId.Inventory:
 					Client.World.Player.Inventory.SetSlot(slot, item, false);
 
 					//Client.World.Player.Inventory[slot] = item;//.SetSlot(slot, item, true);
 					break;
 
-				case 33: // off-hand
+				case (byte) ContainerId.Offhand:
 					Client.World.Player.Inventory.OffHand = item;
 
 					break;
 
-				case 6: // armor
+				case (byte) ContainerId.Armor:
 					switch (slot)
 					{
 						case 0:
@@ -354,7 +354,7 @@ namespace Alex.Utils.Inventories
 
 					break;
 
-				case 7: // chest/container
+				case (byte) ContainerId.LevelEntity:
 					var activeWindow = Client.World.InventoryManager.ActiveWindow;
 
 					if (activeWindow != null)
@@ -379,38 +379,38 @@ namespace Alex.Utils.Inventories
 			}
 		}
 
-		private bool TryGetContainer(byte containerId, out InventoryBase inventory)
+		private bool TryGetContainer(ContainerId containerId, out InventoryBase inventory)
 		{
 			switch (containerId)
 			{
-				case 13: // crafting
-				case 21: // enchanting
-				case 22: // enchanting
-				case 41: // loom
-				case 58: // cursor
-				case 59: // creative
+				case ContainerId.CraftingInput:
+				case ContainerId.EnchantingInput:
+				case ContainerId.EnchantingMaterial:
+				case ContainerId.LoomInput:
+				case ContainerId.Cursor:
+				case ContainerId.CreatedOutput:
 					inventory = Client.World.Player.Inventory.UiInventory;
 
 					return true;
 
-				case 12: // auto
-				case 27: // hotbar
-				case 28: // player inventory
+				case ContainerId.CombinedHotbarAndInventory:
+				case ContainerId.Hotbar:
+				case ContainerId.Inventory:
 					inventory = Client.World.Player.Inventory;
 
 					return true;
 
-				case 33: // off-hand
+				case ContainerId.Offhand:
 					inventory = Client.World.Player.Inventory;
 
 					return true;
 
-				case 6: // armor
+				case ContainerId.Armor:
 					inventory = Client.World.Player.Inventory;
 
 					return true;
 
-				case 7: // chest/container
+				case ContainerId.LevelEntity: // chest/container
 					var activeWindow = Client.World.InventoryManager.ActiveWindow;
 
 					if (activeWindow != null)
@@ -423,13 +423,13 @@ namespace Alex.Utils.Inventories
 					//if (_player._openInventory is Inventory inventory) inventory.SetSlot(_player, (byte) slot, item);
 					break;
 
-				case 0:
+				case ContainerId.AnvilInput:
 					inventory = Client.World.Player.Inventory;
 
 					return true;
 			}
 
-			if (Client.World.InventoryManager.TryGet(containerId, out var inventoryBase))
+			if (Client.World.InventoryManager.TryGet((int) containerId, out var inventoryBase))
 			{
 				inventory = inventoryBase.Inventory;
 

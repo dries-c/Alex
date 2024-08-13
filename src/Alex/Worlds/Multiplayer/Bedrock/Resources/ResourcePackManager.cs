@@ -167,6 +167,8 @@ namespace Alex.Worlds.Multiplayer.Bedrock.Resources
 					//resourcePackIds.Add(entry.Identifier);
 				}
 			}
+			
+			// todo: cdn Url implementation
 
 			//response.resourcepackids = resourcePackIds;
 

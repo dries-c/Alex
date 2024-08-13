@@ -40,7 +40,7 @@ namespace Alex.Worlds.Multiplayer.Bedrock
 		//public IReadOnlyDictionary<uint, BlockStateContainer> BlockStateMap { get; set; } =
 		//    new Dictionary<uint, BlockStateContainer>();
 
-		public static Itemstates Itemstates { get; set; } = new Itemstates();
+		public static ItemStates Itemstates { get; set; } = new ItemStates();
 
 		private ConcurrentDictionary<uint, uint> _convertedStates = new ConcurrentDictionary<uint, uint>();
 
@@ -474,94 +474,9 @@ namespace Alex.Worlds.Multiplayer.Bedrock
 			return BiomeUtils.GetBiome(id);
 		}
 
-		public uint TranslateBlockState(uint stateId)
-		{
-			if (_convertedStates.TryGetValue(stateId, out var translated))
-			{
-				return translated;
-			}
-			
-			var bs = MiNET.Blocks.BlockFactory.BlockPalette.FirstOrDefault(x => x.RuntimeId == stateId);
-
-			if (bs == null) return stateId;
-
-			var copy = new BlockStateContainer()
-			{
-				Data = bs.Data,
-				Id = bs.Id,
-				Name = bs.Name,
-				States = bs.States,
-				RuntimeId = bs.RuntimeId
-			};
-
-			if (TryConvertBlockState(copy, out var convertedState))
-			{
-				if (convertedState != null)
-				{
-					_convertedStates.TryAdd(stateId, convertedState.Id);
-
-					return convertedState.Id;
-				}
-			}
-
-			var t = BlockFactory.GetBlockState(copy.Name);
-
-			if (t.Name == "Unknown")
-			{
-				return t.Id;
-			}
-			else
-			{
-				_convertedStates.TryAdd(stateId, t.Id);
-
-				return t.Id;
-			}
-		}
-
 		public BlockState GetBlockState(uint p)
 		{
-			return BlockFactory.GetBlockState(TranslateBlockState(p));
-		}
-		
-		private bool TryConvertBlockState(BlockStateContainer record, out BlockState result)
-		{
-			if (_convertedStates.TryGetValue((uint)record.RuntimeId, out var alreadyConverted))
-			{
-				result = BlockFactory.GetBlockState(alreadyConverted);
-
-				return true;
-			}
-
-			if (BlockFactory.BedrockStates.TryGetValue(record.Name, out var bedrockStates))
-			{
-				var defaultState = bedrockStates.GetDefaultState();
-
-				if (defaultState != null)
-				{
-					if (record.States != null)
-					{
-						foreach (var prop in record.States)
-						{
-							defaultState = defaultState.WithProperty(prop.Name, prop.Value());
-						}
-					}
-
-					if (defaultState is PeBlockState pebs)
-					{
-						result = pebs.Original;
-
-						return true;
-					}
-
-					result = defaultState;
-
-					return true;
-				}
-			}
-
-			result = null;
-
-			return false;
+			return BlockFactory.GetBlockState(p);
 		}
 
 		public void Dispose()

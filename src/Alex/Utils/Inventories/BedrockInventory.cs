@@ -1,4 +1,5 @@
 using Alex.Items;
+using MiNET.Utils;
 
 namespace Alex.Utils.Inventories
 {
@@ -14,7 +15,7 @@ namespace Alex.Utils.Inventories
 			HotbarOffset = 0;
 			InventoryOffset = 9;
 
-			InventoryId = 28;
+			InventoryId = (int) ContainerId.Inventory;
 		}
 
 		public override int SelectedSlot

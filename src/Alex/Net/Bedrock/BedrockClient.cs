@@ -33,6 +33,7 @@ using Jose;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Xna.Framework;
 using MiNET;
+using MiNET.Blocks;
 using MiNET.Net;
 using MiNET.Net.RakNet;
 using MiNET.Utils;
@@ -185,7 +186,7 @@ namespace Alex.Net.Bedrock
 				handler.ConnectionAction = () =>
 				{
 					ConnectionAcceptedWaitHandle?.Set();
-					SendAlexLogin(_playerProfile.Username);
+					SendRequestNetworkSettings();
 				};
 
 				handler.DisconnectedAction = (reason, sendDisconnect) =>
@@ -373,17 +374,6 @@ namespace Alex.Net.Bedrock
 			_markedAsInitialized = false;
 		}
 
-		private long _tickSyncTime = 0;
-		public void SendTickSync()
-		{
-			return;
-			;
-			Log.Info($"Syncing ticks...");
-			McpeTickSync tickSync = McpeTickSync.CreateObject();
-			tickSync.requestTime = _tickSyncTime = Tick;
-			SendPacket(tickSync);
-		}
-
 		public void MarkAsInitialized()
 		{
 			if (!CanSpawn)
@@ -454,7 +444,15 @@ namespace Alex.Net.Bedrock
 
 		private bool LoginSent { get; set; } = false;
 
-		private void SendAlexLogin(string username)
+		private void SendRequestNetworkSettings()
+		{
+			McpeRequestNetworkSettings packet = McpeRequestNetworkSettings.CreateObject();
+			packet.protocolVersion = McpeProtocolInfo.ProtocolVersion;
+			
+			SendPacket(packet);
+		}
+
+		public void SendAlexLogin()
 		{
 			if (LoginSent)
 			{
@@ -463,6 +461,7 @@ namespace Alex.Net.Bedrock
 				return;
 			}
 
+			string username = _playerProfile.Username;
 			LoginSent = true;
 			JWT.DefaultSettings.JsonMapper = new JWTMapper();
 
@@ -786,7 +785,7 @@ namespace Alex.Net.Bedrock
 							Encoding.UTF8.GetBytes((string)payload.SkinGeometryData ?? string.Empty)),
 					AnimationData = payload.AnimationData,
 					IsPremiumSkin = payload.IsPremiumSkin,
-					IsPersonaSkin = payload.IsPersonaSkin
+					IsPersonaSkin = payload.IsPersonaSkin,
 				};
 			}
 
@@ -814,7 +813,10 @@ namespace Alex.Net.Bedrock
 					ThirdPartyName = username,
 					DeviceId = Alex.Resources.DeviceID,
 					GameVersion = McpeProtocolInfo.GameVersion,
-					PlayFabID = "uhhh"
+					PlayFabID = "uhhh",
+					CompatibleWithClientSideChunkGen = false,
+					OverrideSkin = true,
+					TrustedSkin = true,
 				},
 				new JsonSerializerSettings()
 				{
@@ -834,39 +836,6 @@ namespace Alex.Net.Bedrock
 		public long Tick { get; set; }
 
 		//public System.Numerics.Vector3 SpawnPoint { get; set; } = System.Numerics.Vector3.Zero;
-
-		public void SendAdventureFlags()
-		{
-			uint flags = 0;
-
-			if (World.Player.IsWorldImmutable) flags |= 0x01;
-			if (World.Player.IsNoPvP) flags |= 0x02;
-			if (World.Player.IsNoPvM) flags |= 0x04;
-			if (World.Player.CanFly) flags |= 0x40;
-			if (World.Player.HasCollision) flags |= 0x80;
-			if (World.Player.IsFlying) flags |= 0x200;
-
-			McpeAdventureSettings settings = McpeAdventureSettings.CreateObject();
-			settings.flags = (uint)flags;
-			settings.actionPermissions = (uint)World.Player.ActionPermissions;
-			settings.commandPermission = (uint)World.Player.CommandPermissions;
-			settings.permissionLevel = (uint)World.Player.PermissionLevel;
-			settings.customStoredPermissions = World.Player.CustomStoredPermissions;
-			settings.entityUniqueId = BinaryPrimitives.ReverseEndianness(EntityId);
-
-			SendPacket(settings);
-		}
-
-		public void RequestAbility(PlayerAbility ability, object value)
-		{
-			if (value is not bool or float)
-				throw new InvalidOperationException("Invalid value type, expected bool or float");
-			
-			McpeRequestAbility request = McpeRequestAbility.CreateObject();
-			request.ability = (int)ability;
-			request.Value = value;
-			SendPacket(request);
-		}
 		
 		public override bool EntityAction(int entityId, EntityAction action)
 		{
@@ -882,15 +851,20 @@ namespace Alex.Net.Bedrock
 			switch (action)
 			{
 				case Common.Utils.EntityAction.StartFlying:
-					SendAdventureFlags();
-					RequestAbility(PlayerAbility.Flying, true);
-					return true;
-
+					translated = PlayerAction.StartFlying;
+					
+					if (ServerAuthoritiveMovement)
+						return true;
+					
+					break;
+				
 				case Common.Utils.EntityAction.StopFlying:
-					SendAdventureFlags();
-					RequestAbility(PlayerAbility.Flying, false);
+					translated = PlayerAction.StopFlying;
+					
+					if (ServerAuthoritiveMovement)
+						return true;
 
-					return true;
+					break;
 
 				case Common.Utils.EntityAction.StartSwimming:
 					translated = PlayerAction.StartSwimming;
@@ -1006,7 +980,7 @@ namespace Alex.Net.Bedrock
 		{
 			if (item is MiNET.Items.ItemBlock itemBlock)
 			{
-				return (uint)itemBlock.Block.GetRuntimeId();
+				return (uint) itemBlock.BlockRuntimeId;
 			}
 
 			return 0;
@@ -1062,17 +1036,19 @@ namespace Alex.Net.Bedrock
 			if (item == null)
 				return new MiNET.Items.ItemAir();
 
-			var minetItem = MiNET.Items.ItemFactory.GetItem(item.Id, item.Meta, item.Count);
+			var minetItem = MiNET.Items.ItemFactory.GetItem(item.Name, item.Meta, item.Count);
 
-			if (minetItem.Id == 0)
+			if (minetItem.LegacyId == 0)
 			{
-				if (MiNET.Worlds.AnvilWorldProvider.Convert.TryGetValue(item.Id, out var val))
-				{
-					var id = val.Item1;
-					var meta = val.Item2(id, (byte)item.Meta);
+				//if (MiNET.Worlds.Anvil.AnvilPaletteConverter..Convert.TryGetValue(item.Id, out var val))
+				//{
+				//	var id = val.Item1;
+				//	var meta = val.Item2(id, (byte)item.Meta);
 
-					minetItem = MiNET.Items.ItemFactory.GetItem((short)id, meta, item.Count);
-				}
+				//	minetItem = MiNET.Items.ItemFactory.GetItem((short)id, meta, item.Count);
+				//}
+				
+				Log.Error($"Unknown item id: {item.Id}");
 			}
 
 			minetItem.ExtraData = item.Nbt;
@@ -1179,7 +1155,7 @@ namespace Alex.Net.Bedrock
 				{
 					ActionType = realAction,
 					Item = GetMiNETItem(p.Inventory[slot]),
-					EntityId = target.EntityId,
+					RuntimeEntityId = target.EntityId,
 					Slot = slot,
 					FromPosition =
 						new System.Numerics.Vector3(p.KnownPosition.X, p.KnownPosition.Y, p.KnownPosition.Z),

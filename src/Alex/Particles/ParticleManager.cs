@@ -303,12 +303,12 @@ namespace Alex.Particles
 				case ParticleType.SnowballPoof:
 					break;
 
-				case ParticleType.LargeExplode:
+				case ParticleType.HugeExplode:
 					value = "minecraft:large_explosion";
 
 					return true;
 
-				case ParticleType.HugeExplode:
+				case ParticleType.HugeExplodeSeed:
 					value = "minecraft:huge_explosion_emitter";
 
 					return true;
@@ -429,7 +429,7 @@ namespace Alex.Particles
 				case ParticleType.Carrot:
 					break;
 
-				case ParticleType.Unknown39:
+				case ParticleType.MobAppearance:
 					break;
 
 				case ParticleType.EndRod:

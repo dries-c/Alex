@@ -707,7 +707,7 @@ namespace Alex.Networking.Bedrock.RakNet
 			//if (ConnectionResetEvent.IsSet) return;
 
 			var packet = OpenConnectionRequest1.CreateObject();
-			packet.raknetProtocolVersion = 10;
+			packet.raknetProtocolVersion = 11;
 			packet.mtuSize = (short)(mtuSize);
 
 			byte[] data = packet.Encode();

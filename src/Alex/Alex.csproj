@@ -112,7 +112,9 @@
     </ItemGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\..\submodules\ConcreteMC.Primitives\src\Alex.Primitives.csproj" />
         <ProjectReference Include="..\..\submodules\Networking\Java\src\Alex.Networking.Java.csproj" />
+        <ProjectReference Include="..\..\submodules\RocketUI\src\RocketUI\RocketUI.csproj" />
         <ProjectReference Include="..\Alex.Common\Alex.Common.csproj" />
         <ProjectReference Include="..\Alex.ResourcePackLib\Alex.ResourcePackLib.csproj" />
         <ProjectReference Include="..\Networking\Alex.Networking.Bedrock\Alex.Networking.Bedrock.csproj" />

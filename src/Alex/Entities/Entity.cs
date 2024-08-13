@@ -425,78 +425,35 @@ namespace Alex.Entities
 
 		public void SetAbilityLayer(AbilityLayer layer)
 		{
-			var values = layer.Values;
-			foreach (PlayerAbility ability in Enum.GetValues<PlayerAbility>())
+			var values = layer.Abilities;
+
+			FlyingSpeed = layer.FlySpeed * 8f;
+
+			foreach (KeyValuePair<PlayerAbility, bool> ability in values)
 			{
-				if ((layer.Abilities & ability) != 0)
+				switch (ability.Key)
 				{
-					switch (ability)
-					{
-						case PlayerAbility.MayFly:
-							CanFly = (values & (uint)PlayerAbility.MayFly) != 0;
-							break;
-						
-						case PlayerAbility.Flying:
-							IsFlying = (values & (uint)PlayerAbility.Flying) != 0;
-							break;
-						
-						case PlayerAbility.Invulnerable:
-							Invulnerable = (values & (uint)PlayerAbility.Invulnerable) != 0;
-							break;
-
-						case PlayerAbility.Build:
-							CanBuild = (values & (uint)PlayerAbility.Build) != 0;
-							break;
-
-						case PlayerAbility.Mine:
-							CanMine = (values & (uint)PlayerAbility.Mine) != 0;
-							break;
-
-						case PlayerAbility.DoorsAndSwitches:
-							break;
-
-						case PlayerAbility.OpenContainers:
-							break;
-
-						case PlayerAbility.AttackPlayers:
-							break;
-
-						case PlayerAbility.AttackMobs:
-							break;
-
-						case PlayerAbility.OperatorCommands:
-							break;
-
-						case PlayerAbility.Teleport:
-							break;
-
-						case PlayerAbility.InstantBuild:
-							break;
-
-						case PlayerAbility.Lightning:
-							break;
-
-						case PlayerAbility.FlySpeed:
-							if ((values & (uint) PlayerAbility.FlySpeed) != 0)
-								FlyingSpeed = layer.FlySpeed * 8f;
-							break;
-
-						case PlayerAbility.WalkSpeed:
-							if ((values & (uint) PlayerAbility.WalkSpeed) != 0)
-								FlyingSpeed = layer.WalkSpeed * 8f;
-							break;
-
-						case PlayerAbility.Muted:
-							IsMuted = (values & (uint)PlayerAbility.Muted) != 0;
-							break;
-
-						case PlayerAbility.WorldBuilder:
-							break;
-
-						case PlayerAbility.NoClip:
-							HasCollision = (values & (uint)PlayerAbility.NoClip) == 0;
-							break;
-					}
+					case PlayerAbility.MayFly:
+						CanFly = ability.Value;
+						break;
+					case PlayerAbility.Flying:
+						IsFlying = ability.Value;
+						break;
+					case PlayerAbility.Invulnerable:
+						Invulnerable = ability.Value;
+						break;
+					case PlayerAbility.Build:
+						CanBuild = ability.Value;
+						break;
+					case PlayerAbility.Mine:
+						CanMine = ability.Value;
+						break;
+					case PlayerAbility.Muted:
+						IsMuted = ability.Value;
+						break;
+					case PlayerAbility.NoClip:
+						HasCollision = !ability.Value;
+						break;
 				}
 			}
 		}
@@ -944,9 +901,9 @@ namespace Alex.Entities
 		protected virtual void HandleJavaMeta(MetaDataEntry entry) { }
 
 		public Vector3 RiderSeatPosition { get; set; } = Vector3.Zero;
-		public float RiderMinRotation { get; set; } = 0f;
-		public float RiderMaxRotation { get; set; } = 360f;
-		public bool RiderRotationLocked { get; set; } = true;
+		public float SeatRotationOffset { get; set; } = 0f;
+		public float SeatLockPassengerRotationDegrees { get; set; } = 360f;
+		public bool SeatLockPassengerRotation { get; set; } = true;
 
 		public void HandleMetadata(MetadataDictionary metadata)
 		{
@@ -996,31 +953,31 @@ namespace Alex.Entities
 
 						break;
 
-					case (int)MiNET.Entities.Entity.MetadataFlags.RiderMinRotation:
+					case (int)MiNET.Entities.Entity.MetadataFlags.SeatRotationOffset:
 					{
 						if (meta.Value is MiNET.Utils.Metadata.MetadataFloat mdf)
 						{
-							RiderMinRotation = mdf.Value;
+							SeatRotationOffset = mdf.Value;
 						}
 					}
 
 						break;
 
-					case (int)MiNET.Entities.Entity.MetadataFlags.RiderMaxRotation:
+					case (int)MiNET.Entities.Entity.MetadataFlags.SeatLockPassengerRotationDegrees:
 					{
 						if (meta.Value is MiNET.Utils.Metadata.MetadataFloat mdf)
 						{
-							RiderMaxRotation = mdf.Value;
+							SeatLockPassengerRotationDegrees = mdf.Value;
 						}
 					}
 
 						break;
 
-					case (int)MiNET.Entities.Entity.MetadataFlags.RiderRotationLocked:
+					case (int)MiNET.Entities.Entity.MetadataFlags.SeatLockPassengerRotation:
 					{
 						if (meta.Value is MiNET.Utils.Metadata.MetadataByte mdf)
 						{
-							RiderRotationLocked = mdf.Value == 1;
+							SeatLockPassengerRotation = mdf.Value == 1;
 						}
 					}
 
@@ -1049,7 +1006,7 @@ namespace Alex.Entities
 
 						break;
 
-					case (int)MiNET.Entities.Entity.MetadataFlags.NameTag:
+					case (int)MiNET.Entities.Entity.MetadataFlags.Name:
 					{
 						if (meta.Value is MiNET.Utils.Metadata.MetadataString nametag)
 						{
@@ -1068,7 +1025,7 @@ namespace Alex.Entities
 						break;
 					}*/
 
-					case (int)MiNET.Entities.Entity.MetadataFlags.MaxAir:
+					case (int)MiNET.Entities.Entity.MetadataFlags.AirSupplyMax:
 					{
 						if (meta.Value is MiNET.Utils.Metadata.MetadataShort airTag)
 						{
@@ -1078,7 +1035,7 @@ namespace Alex.Entities
 
 						break;
 
-					case (int)MiNET.Entities.Entity.MetadataFlags.AvailableAir:
+					case (int)MiNET.Entities.Entity.MetadataFlags.AirSupply:
 					{
 						if (meta.Value is MiNET.Utils.Metadata.MetadataShort airTag)
 						{
@@ -1118,7 +1075,7 @@ namespace Alex.Entities
 
 						break;
 
-					case (int)MiNET.Entities.Entity.MetadataFlags.Color:
+					case (int)MiNET.Entities.Entity.MetadataFlags.ColorIndex:
 					{
 						if (meta.Value is MiNET.Utils.Metadata.MetadataInt color)
 						{
@@ -1251,7 +1208,7 @@ namespace Alex.Entities
 			IsSprinting = data[(int)MiNET.Entities.Entity.DataFlags.Sprinting];
 
 			NoAi = data[(int)MiNET.Entities.Entity.DataFlags.NoAi];
-			IsAffectedByGravity = data[(int)MiNET.Entities.Entity.DataFlags.AffectedByGravity];
+			IsAffectedByGravity = data[(int)MiNET.Entities.Entity.DataFlags.HasGravity];
 			//HasCollision = data[(int) MiNET.Entities.Entity.DataFlags.HasCollision];
 
 			//HideNameTag = !data[(int) MiNET.Entities.Entity.DataFlags.ShowName];
@@ -1266,7 +1223,7 @@ namespace Alex.Entities
 			IsLeashed = data[(int)MiNET.Entities.Entity.DataFlags.Leashed];
 			IsSheared = data[(int)MiNET.Entities.Entity.DataFlags.Sheared];
 			IsChested = data[(int)MiNET.Entities.Entity.DataFlags.Chested];
-			IsFlagAllFlying = data[(int)MiNET.Entities.Entity.DataFlags.FlagAllFlying];
+			IsFlagAllFlying = data[(int)MiNET.Entities.Entity.DataFlags.Gliding];
 			IsSilent = data[(int)MiNET.Entities.Entity.DataFlags.Silent];
 			IsWallClimbing = data[(int)MiNET.Entities.Entity.DataFlags.WallClimbing];
 			IsResting = data[(int)MiNET.Entities.Entity.DataFlags.Resting];

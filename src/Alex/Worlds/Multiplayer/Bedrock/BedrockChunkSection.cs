@@ -30,8 +30,9 @@ namespace Alex.Worlds.Multiplayer.Bedrock
 
 			switch (version)
 			{
-				case 1:
-					section = ReadLegacyChunkSection(processor, stream);
+				case 1: 
+					//todo: implement this again
+					//section = ReadLegacyChunkSection(processor, stream);
 					break;
 				case 8:
 				case 9:
@@ -105,16 +106,11 @@ namespace Alex.Worlds.Multiplayer.Bedrock
 					var state = (uint) ((word >> ((position % blocksPerWord) * bitsPerEntry))
 					                    & ((1 << bitsPerEntry) - 1));
 					
-					if (state >= palette.Length)
-						continue;
-
-					var id = palette[state];
-					
 					int x = (position >> 8) & 0xF;
 					int y = position & 0xF;
 					int z = (position >> 4) & 0xF;
 
-					blockStorage.Set(x,y,z, processor.GetBlockState(id));
+					blockStorage.Set(x,y,z, processor.GetBlockState(state));
 
 					position++;
 				}
@@ -149,17 +145,17 @@ namespace Alex.Worlds.Multiplayer.Bedrock
 
 						//var ruid = BlockFactory.GetBlockStateID(id, meta);
 
-						var block = MiNET.Blocks.BlockFactory.GetRuntimeId(id, meta);
-						BlockState result = processor.GetBlockState(block);
+						//var block = MiNET.Blocks.BlockFactory.GetBlockById(id, meta);
+						//BlockState result = processor.GetBlockState(block);
 
-						if (result != null)
-						{
-							section.Set(x, y, z, result);
-						}
-						else
-						{
+						//if (result != null)
+						//{
+						//	section.Set(x, y, z, result);
+						//}
+						//else
+						//{
 							Log.Info($"Unknown block: {id}:{meta}");
-						}
+						//}
 					}
 				}
 			}
