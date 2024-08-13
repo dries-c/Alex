@@ -8,3 +8,6 @@
 [submodule "submodules/ConcreteMC.Primitives"]
 	path = submodules/ConcreteMC.Primitives
 	url = git@github.com:ConcreteMC/Primitives.git
+[submodule "submodules/MiNET"]
+	path = submodules/MiNET
+	url = https://github.com/CRPE-Team/MiNET
