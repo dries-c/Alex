@@ -18,6 +18,7 @@ using Alex.Utils.Collections;
 using Alex.Worlds.Chunks;
 using ConcurrentObservableCollections.ConcurrentObservableDictionary;
 using fNbt;
+using LibNoise.Combiner;
 using MiNET;
 using MiNET.Net;
 using MiNET.Utils;
@@ -476,7 +477,34 @@ namespace Alex.Worlds.Multiplayer.Bedrock
 
 		public BlockState GetBlockState(uint p)
 		{
-			return BlockFactory.GetBlockState(p);
+			//TODO: Fix Alex blockfactory block registrations
+			var blockState = MiNET.Blocks.BlockFactory.BlockPalette[(int)p];
+			var block = BlockFactory.GetBlockState(blockState.Id);
+
+			if (block != null)
+			{
+				foreach(var s in blockState.States)
+				{
+					if (s is BlockStateString bss)
+					{
+						block = block.WithProperty(bss.Name, bss.Value);
+					}
+					else if (s is BlockStateByte bsb)
+					{
+						block = block.WithProperty(bsb.Name, bsb.Value.ToString());
+					}
+					else if (s is BlockStateInt bsi)
+					{
+						block = block.WithProperty(bsi.Name, bsi.Value.ToString());
+					}
+					else
+					{
+						block = block.WithProperty(s.Name, s.Value());
+					}
+				}
+			}
+
+			return block;
 		}
 
 		public void Dispose()

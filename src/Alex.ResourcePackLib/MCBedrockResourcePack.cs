@@ -26,6 +26,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using NLog;
 using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats;
 using SixLabors.ImageSharp.Formats.Tga;
 using SixLabors.ImageSharp.PixelFormats;
 using Animation = Alex.ResourcePackLib.Json.Bedrock.Entity.Animation;
@@ -894,7 +895,8 @@ namespace Alex.ResourcePackLib
 				{
 					if (file.EndsWith(".tga"))
 					{
-						bmp = Image.Load(fs, new TgaDecoder()).CloneAs<Rgba32>();
+						bmp = TgaDecoder.Instance.Decode(new DecoderOptions(), fs).CloneAs<Rgba32>();
+						//bmp = Image.Load(fs, new TgaDecoder()).CloneAs<Rgba32>();
 					}
 					else
 					{

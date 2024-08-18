@@ -10,6 +10,7 @@ using Alex.ResourcePackLib.Json.Models.Entities;
 using Alex.ResourcePackLib.Json.Textures;
 using NLog;
 using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats;
 using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.PixelFormats;
 
@@ -19,7 +20,7 @@ namespace Alex.ResourcePackLib.Bedrock
 	{
 		private static readonly ILogger Log = LogManager.GetCurrentClassLogger();
 
-		private static PngDecoder PngDecoder { get; } = new PngDecoder() { IgnoreMetadata = true };
+		private static PngDecoder PngDecoder { get; } = PngDecoder.Instance; /*new PngDecoder() { IgnoreMetadata = true };*/
 
 		/// <inheritdoc />
 		public override string Name
@@ -109,7 +110,7 @@ namespace Alex.ResourcePackLib.Bedrock
 			using (var s = textureEntry.Open())
 			{
 				//img = new Bitmap(s);
-				img = Image.Load<Rgba32>(s.ReadToSpan(textureEntry.Length), PngDecoder);
+				img = Image.Load<Rgba32>(s.ReadToSpan(textureEntry.Length));
 			}
 
 			bitmap = img;

@@ -97,8 +97,9 @@ namespace Alex.Worlds.Lighting
 
 			if (currentLightLevel + 2 <= lightLevel)
 			{
-				var block = column.GetBlockState(target.X & 0xf, target.Y, target.Z & 0xf).Block;
-
+				var blockState = column.GetBlockState(target.X & 0xf, target.Y, target.Z & 0xf);
+				var block = blockState.Block;
+				if (block == null) return;
 				if ((!block.Solid || block.Transparent))
 				{
 					SetLightLevel(column, target, (lightLevel - block.Diffusion));

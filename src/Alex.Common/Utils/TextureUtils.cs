@@ -228,7 +228,8 @@ namespace Alex.Common.Utils
 											new SixLabors.ImageSharp.Point(
 												destRegion.Location.X, destRegion.Location.Y),
 											PixelColorBlendingMode.Normal,
-											nwImage.GetConfiguration().GetGraphicsOptions().AlphaCompositionMode,
+											nwImage.Configuration.GetGraphicsOptions().AlphaCompositionMode
+											/*nwImage.GetConfiguration().GetGraphicsOptions().AlphaCompositionMode*/,
 											interpolateProgress));
 
 									/*context.DrawImage(
@@ -306,7 +307,7 @@ namespace Alex.Common.Utils
 			SixLabors.ImageSharp.Image<TPixelFg> image = this.Image;
 			PixelBlender<TPixelBg> blender = this.Blender;
 			int y = this.Location.Y;
-			SixLabors.ImageSharp.Rectangle rectangle1 = image.Bounds();
+			SixLabors.ImageSharp.Rectangle rectangle1 = image.Bounds;
 			int num = Math.Max(this.Location.X, sourceRectangle.X);
 			int right = Math.Min(this.Location.X + rectangle1.Width, sourceRectangle.Right);
 			int targetX = num - this.Location.X;

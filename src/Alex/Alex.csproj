@@ -97,11 +97,11 @@
         <PackageReference Include="DiscordRichPresence" Version="1.0.175" />
         <PackageReference Include="EasyPipes" Version="1.3.0" />
         <PackageReference Include="FmodAudio" Version="2.2.5" />
-        <PackageReference Include="jose-jwt" Version="3.2.0" />
+        <PackageReference Include="jose-jwt" Version="4.1.0" />
         <PackageReference Include="Microsoft.Identity.Client" Version="4.37.0" />
         <PackageReference Include="MojangAPI" Version="1.1.0" />
         <PackageReference Include="Mono.Cecil" Version="0.11.4" />
-        <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
         <PackageReference Include="NLog" Version="4.7.15" />
         <PackageReference Include="System.Globalization" Version="4.3.0" />
         <PackageReference Include="System.Reactive.Core" Version="5.0.0" />

@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using Alex.Blocks;
 using Alex.Blocks.State;
 using Alex.Blocks.Storage;
 using Alex.Worlds.Chunks;
@@ -110,8 +111,9 @@ namespace Alex.Worlds.Multiplayer.Bedrock
 					int y = position & 0xF;
 					int z = (position >> 4) & 0xF;
 
-					blockStorage.Set(x,y,z, processor.GetBlockState(state));
-
+					var runtimeId = palette[state];
+					
+					blockStorage.Set(x,y,z, processor.GetBlockState(runtimeId));
 					position++;
 				}
 			}

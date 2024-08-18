@@ -236,7 +236,7 @@ namespace Alex.Entities
 						var pics = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
 						var screenshotPath = Path.Combine(pics, $"alex-{DateTime.Now.ToString("s")}.png");
 
-						using (Image<Rgba32> t = Image.LoadPixelData(data, w, h))
+						using (Image<Rgba32> t = Image.LoadPixelData<Rgba32>(data, w, h))
 						{
 							using (FileStream fs = File.OpenWrite(screenshotPath))
 							{

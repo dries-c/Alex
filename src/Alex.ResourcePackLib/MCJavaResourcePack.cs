@@ -129,7 +129,7 @@ namespace Alex.ResourcePackLib
             Filesystem = archive;
             ProgressReporter = progressReporter;
 
-            PngDecoder = new PngDecoder() { IgnoreMetadata = true };
+            PngDecoder = PngDecoder.Instance; // new PngDecoder() { IgnoreMetadata = true };
             PreloadCallback = preloadCallback;
             //_archive = archive;
             Load(archive);
@@ -333,9 +333,9 @@ namespace Alex.ResourcePackLib
                         using (var s = entry.Open())
                         {
                             //img = new Bitmap(s);
-                            var data = s.ReadToSpan(entry.Length);
+                           // var data = s.ReadToSpan(entry.Length);
 
-                            return Image.Load<Rgba32>(data, PngDecoder);
+                            return PngDecoder.Decode<Rgba32>(new PngDecoderOptions(), s);// Image.Load<Rgba32>(data, PngDecoder);
                         }
                     }
                     catch (InvalidImageContentException)

@@ -504,7 +504,7 @@ namespace Alex.Entities
 					texture.SaveAsPng(ms, texture.Width, texture.Height);
 					ms.Position = 0;
 
-					skinTexture = Image.Load(ms, new PngDecoder()).CloneAs<Rgba32>();
+					skinTexture = Image.Load(ms).CloneAs<Rgba32>();
 				}
 
 				skin = skin.UpdateTexture(skinTexture);

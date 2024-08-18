@@ -344,6 +344,8 @@ namespace Alex.Worlds.Chunks
 				if (section == null) continue;
 
 				var block = section.Get(x, y & 0xf, z).Block;
+if (block == null)
+	continue;
 
 				if (calculatingHeight)
 				{
