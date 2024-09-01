@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -37,11 +38,6 @@ namespace Alex.Blocks
 
         private static readonly ConcurrentDictionary<ResourceLocation, BlockStateVariantMapper> BlockStateByName =
             new ConcurrentDictionary<ResourceLocation, BlockStateVariantMapper>();
-
-        public static readonly ConcurrentDictionary<ResourceLocation, BlockStateVariantMapper> BedrockStates =
-            new ConcurrentDictionary<ResourceLocation, BlockStateVariantMapper>();
-
-        public static IPalette<BlockState> BlockPalette { get; } = new DirectPalette<BlockState>(GetBlockState);
 
         private static bool _builtin = false;
 
@@ -353,6 +349,7 @@ namespace Alex.Blocks
             int counter = 0;
 
             sw.Restart();
+            var bedrockStates = new Dictionary<string, BlockStateVariantMapper>();
             foreach (var m in mapping.GroupBy(x => x.Value.BedrockIdentifier))
             {
                 progressReceiver?.UpdateProgress(counter, mapping.Count, "Mapping blockstates...", m.Key);
@@ -426,25 +423,92 @@ namespace Alex.Blocks
                     states.Add(bedrockState);
                 }
 
-                BedrockStates[m.Key] = new BlockStateVariantMapper(states)
+                bedrockStates[m.Key] = new BlockStateVariantMapper(states)
                 {
                     Model = blockModel, IsMultiPart = isMultiPart
                 };
             }
 
             //Log.Info($"Loaded {multipartBased} multi-part blockstates!");
-            Log.Info($"Loaded {BedrockStates.Count} MC:Java -> MC:Bedrock mappings in {sw.ElapsedMilliseconds}ms...");
+            Log.Info($"Loaded {bedrockStates.Count} MC:Java -> MC:Bedrock mappings in {sw.ElapsedMilliseconds}ms...");
+            var allBedrockStates = bedrockStates.SelectMany(x => x.Value.GetVariants()).ToList();
+            
+            var stringBedrockBlockStates = ResourceManager.ReadStringResource("Alex.Resources.bedrockBlockStates.json");
 
-            var allBedrockStates = BedrockStates.SelectMany(x => x.Value.GetVariants()).ToList();
-            _blockStateLocations = allBedrockStates.ToDictionary(x => x.Id, x => x);
+            var bedrockBlockStates = JsonConvert
+                .DeserializeObject<BedrockBlockStateDefinition[]>(stringBedrockBlockStates);
+            // var bedrockBlockStatesById = new Dictionary<uint, BedrockBlockStateDefinition>();
+            var newBedrockStates = new Dictionary<uint, BlockState>();
+            for (int i = 0; i < bedrockBlockStates.Length; i++)
+            {
+                var state = bedrockBlockStates[i];
+                var stateName = "minecraft:" + state.Name;
+                
+                var nameMatch = allBedrockStates.FirstOrDefault(x =>
+                    x.Name.Equals(stateName, StringComparison.OrdinalIgnoreCase));
+                
+                if (nameMatch == null)
+                {
+                    Log.Warn($"Could not find matching bedrock state for {i} ({stateName})");
+                    newBedrockStates.Add((uint)i, new MissingBlockState(stateName));
+                    continue;
+                }
 
-            foreach (var bs in allBedrockStates)
+                foreach (var s in state.States)
+                {
+                    nameMatch = nameMatch.WithProperty(s.Key, s.Value.Value);
+                }
+
+                newBedrockStates.Add((uint)i, nameMatch);
+                
+                // bedrockBlockStatesById.Add((uint)i, bedrockBlockStates[i]);
+            }
+
+            /*var allBedrockStates = bedrockStates.SelectMany(x => x.Value.GetVariants()).ToList();
+            var newBedrockStates = new Dictionary<uint, BlockState>();
+            foreach (var minetBlockState in MiNET.Blocks.BlockFactory.BlockStates)
+            {
+                var nameMatch =
+                    allBedrockStates.FirstOrDefault(x => x.Name.Equals(minetBlockState.Id, StringComparison.OrdinalIgnoreCase));
+                if (nameMatch == null)
+                {
+                    Log.Warn("Could not find matching bedrock state for " + minetBlockState.Id);
+                    continue;
+                }
+
+                foreach (var s in minetBlockState.States)
+                {
+                    nameMatch = nameMatch.WithProperty(s.Name, s.Value());
+                }
+
+                if (newBedrockStates.TryAdd((uint)minetBlockState.RuntimeId, nameMatch))
+                {
+                    nameMatch.Id = (uint)minetBlockState.RuntimeId;
+                }
+                else
+                {
+                    Log.Warn($"Duplicate bedrock state id: {minetBlockState.Id}");
+                }
+            }*/
+
+            /*//Check for duplicate ids
+            var duplicateIds = allBedrockStates.GroupBy(x => x.Id).Where(x => x.Count() > 1).ToList();
+            if (duplicateIds.Count > 0)
+            {
+                Log.Warn($"Duplicate bedrock state ids: {string.Join(", ", duplicateIds.Select(x => x.Key))}");
+                //Remove the duplicates
+                allBedrockStates = allBedrockStates.GroupBy(x => x.Id).Select(x => x.First()).ToList();
+            }*/
+
+            _blockStateLocations = newBedrockStates;
+
+            /*foreach (var bs in allBedrockStates)
             {
                 if (bs.Block == null)
                 {
                     Log.Warn($"Block is null for {bs}!");
                 }
-            }
+            }*/
 
             return importCounter;
         }
@@ -520,6 +584,16 @@ namespace Alex.Blocks
             }
 
             return closest.Value;
+        }
+
+        public static BlockState GetBedrockState(uint palletId)
+        {
+            if (_blockStateLocations.TryGetValue(palletId, out var result))
+            {
+                return result;
+            }
+
+            return new MissingBlockState(palletId.ToString());
         }
 
         public static BlockState GetBlockState(string palleteId)

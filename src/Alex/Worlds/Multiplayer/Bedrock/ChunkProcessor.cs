@@ -477,6 +477,7 @@ namespace Alex.Worlds.Multiplayer.Bedrock
 
 		public BlockState GetBlockState(uint p)
 		{
+			return BlockFactory.GetBedrockState(p);
 			//TODO: Fix Alex blockfactory block registrations
 			var blockState = MiNET.Blocks.BlockFactory.BlockPalette[(int)p];
 			var block = BlockFactory.GetBlockState(blockState.Id);
